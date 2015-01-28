@@ -18,14 +18,6 @@
         }
       },
 
-      opacity: function (pct, fromValue, toValue) {
-        var num = fromValue + ((toValue - fromValue) * pct);
-        return {
-          key: 'opacity',
-          value: num
-        }
-      },
-
       rotate: function (pct, fromValue, toValue) {
         var deg = fromValue + ((toValue - fromValue) * pct);
         return {
@@ -58,6 +50,26 @@
         }
       }
 
+    };
+
+    function PropertyAnimation (property) {
+      var pctRegexp = /^([0-9]{1,3})\%$/
+        , isPct
+        , match
+        , num;
+      return function (pct, fromValue, toValue) {
+        if (match = pctRegexp.exec(fromValue)) {
+          isPct = true;
+          fromValue = match[1];
+          toValue = pctRegexp.exec(toValue)[1];
+        }
+        num = fromValue + ((toValue - fromValue) * pct);
+        if (isPct) num = num + '%';
+        return {
+          key: property,
+          value: num
+        }
+      }
     };
 
     var StylePropertyHandler = {
@@ -105,7 +117,7 @@
         if (rgba.fromValue.a && rgba.toValue.a) a = parseInt((1-pct) * rgba.fromValue.a + pct * rgba.toValue.a);
         return a ? 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')' : 'rgb(' + r + ', ' + g + ', ' + b + ')';
       }
-    }
+    };
 
     var Property = function (key, value) {
       this.key = key;
@@ -115,14 +127,17 @@
     var Animation = function (action, fromY, from, toY, to) {
       if ('function' === typeof action) {
         this.action = action;
-      } else {
+      } else if (Animations[action]) {
         this.action = Animations[action];
+      } else {
+        this.action = PropertyAnimation(action);
       }
+
       this.fromY = fromY;
       this.from = from;
       this.toY = toY;
       this.to = to;
-    }
+    };
 
     Animation.prototype = {
 
@@ -142,16 +157,16 @@
       this.value = value;
       this.fromY = fromY;
       this.toY = toY;
-    }
+    };
 
     Style.prototype = {
 
       current: function (y) {
-        var pct = (y - this.fromY) / (this.toY - this.fromY);
-        return new Property(this.key, (pct > 0 && pct < 1) ? this.value : '');
+        var pct = this.toY ? (y - this.fromY) / (this.toY - this.fromY) : 1;
+        return new Property(this.key, pct > 0 ? this.value : '');
       }
 
-    }
+    };
 
     var Roll = function () {
       this.components = [];
@@ -187,7 +202,7 @@
       },
 
       position: function (el, type, fromY, toY) {
-        return this.style(el, 'position', type, fromY, toY)
+        return this.style(el, 'position', type, fromY, toY);
       },
 
       style: function (el, key, value, fromY, toY) {
@@ -224,11 +239,12 @@
         return _window_.onscroll = (function (styles, $els) {
           return function () {
             var y = _window_.pageYOffset
-              , props = {}
+              , props
               , prop
               , key
               , val
             for (var el in styles) {
+              props = {};
               for (var i=0; i<styles[el].length; i++) {
                 prop = styles[el][i](y);
                 key = prop.key;
@@ -246,7 +262,7 @@
         }(styles, $els));
       }
 
-    }
+    };
 
     return Roll;
 
