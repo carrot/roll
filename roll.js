@@ -98,7 +98,6 @@
           }
         })(values[key]);
       }
-
       if (rgba.fromValue && rgba.toValue) {
         r = parseInt((1-pct) * rgba.fromValue.r + pct * rgba.toValue.r);
         g = parseInt((1-pct) * rgba.fromValue.g + pct * rgba.toValue.g);
@@ -119,7 +118,6 @@
       } else {
         this.action = Animations[action];
       }
-
       this.fromY = fromY;
       this.from = from;
       this.toY = toY;
@@ -133,7 +131,6 @@
           , action;
         if (pct < 0) pct = 0;
         if (pct > 1) pct = 1;
-
         action = this.action(pct, this.from, this.to);
         return new Property(action.key, action.value);
       }
@@ -164,7 +161,6 @@
 
       animate: function (el, fromY, fromProps, toY, toProps) {
         if (!this.components[el]) this.components[el] = [];
-
         var from, to;
         for (var action in fromProps) {
           from = fromProps[action];
@@ -216,7 +212,6 @@
           , $els = {}
           , components
           , component;
-
         for (var el in this.components) {
           $els[el] = _document_.querySelectorAll(el);
           components = this.components[el];
