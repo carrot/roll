@@ -16,7 +16,7 @@ roll has no dependencies; simply include the library.
 var roll = new Roll();
 
 roll
-  .animate('#foo', 200, { rotate: 0 }, 500: { rotate: 180 } )
+  .animate('#foo', 200, { rotate: 0 }, 500, { rotate: 180 } )
   .animate('#bar', 500, { backgroundColor: '#ff0000' }, 1000, { backgroundColor: 'rgba(0, 0, 0)' })
   .style('#foo', 'textAlign', 'center', 200, 500)
   .fixed('#bar', 500, 1000)

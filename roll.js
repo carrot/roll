@@ -174,7 +174,7 @@
         return this;
       },
 
-      fix: function (el, fromY, toY) {
+      fixed: function (el, fromY, toY) {
         return this.position(el, 'fixed', fromY, toY);
       },
 
@@ -218,7 +218,7 @@
           , component;
 
         for (var el in this.components) {
-          $els[el] = document.querySelector(el);
+          $els[el] = document.querySelectorAll(el);
           components = this.components[el];
           for (var key in components) {
             component = components[key];
@@ -242,7 +242,9 @@
               }
               for (var key in props) {
                 val = props[key].length > 1 ? StylePropertyHandler[key](props[key]) : props[key][0];
-                $els[el].style[key] = val;
+                for (var i=0; i<$els[el].length; i++) {
+                  $els[el][i].style[key] = val;
+                }
               }
             }
           }
