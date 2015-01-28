@@ -236,7 +236,7 @@
                 props[key].push(prop.value);
               }
               for (var key in props) {
-                val = props[key].length > 1 ? StylePropertyHandler[key](props[key]) : props[key][0];
+                val = StylePropertyHandler[key] ? StylePropertyHandler[key](props[key]) : props[key][props[key].length - 1];
                 for (var i=0; i<$els[el].length; i++) {
                   $els[el][i].style[key] = val;
                 }
