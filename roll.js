@@ -1,4 +1,4 @@
-(function (root) {
+(function (_window_, _document_) {
 
   function __() {
 
@@ -218,7 +218,7 @@
           , component;
 
         for (var el in this.components) {
-          $els[el] = document.querySelectorAll(el);
+          $els[el] = _document_.querySelectorAll(el);
           components = this.components[el];
           for (var key in components) {
             component = components[key];
@@ -226,9 +226,9 @@
             styles[el].push(component.current.bind(component));
           }
         }
-        return window.onscroll = (function (styles, $els) {
+        return _window_.onscroll = (function (styles, $els) {
           return function () {
-            var y = window.pageYOffset
+            var y = _window_.pageYOffset
               , props = {}
               , prop
               , key
@@ -260,7 +260,7 @@
   if ('function' === typeof define && define.amd) {
     define(__);
   } else {
-    root.Roll = __();
+    _window_.Roll = __();
   };
 
-})(this);
+})(window, document);
