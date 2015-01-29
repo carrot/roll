@@ -4,49 +4,41 @@
 
     var Animations = {
 
-      backgroundColor: function (pct, fromValue, toValue) {
-        return {
-          key: 'background',
-          value: colorAnimation(pct, fromValue, toValue)
+      backgroundColor: {
+        key: 'background',
+        value: ColorAnimation
+      },
+
+      color: {
+        key: 'color',
+        value: ColorAnimation
+      },
+
+      rotate: {
+        key: 'transform',
+        value: function (pct, fromValue, toValue) {
+          return 'rotate(' + (fromValue + ((toValue - fromValue) * pct)) + 'deg)';
         }
       },
 
-      color: function () {
-        return {
-          key: 'color',
-          value: colorAnimation(pct, fromValue, toValue)
+      rotateX: {
+        key: 'transform',
+        value: function (pct, fromValue, toValue) {
+          return 'rotate(' + (fromValue + ((toValue - fromValue) * pct)) + 'deg)';
         }
       },
 
-      rotate: function (pct, fromValue, toValue) {
-        var deg = fromValue + ((toValue - fromValue) * pct);
-        return {
-          key: 'transform',
-          value: 'rotate(' + deg + 'deg)'
+      rotateY: {
+        key: 'transform',
+        value: function (pct, fromValue, toValue) {
+          return 'rotate(' + (fromValue + ((toValue - fromValue) * pct)) + 'deg)';
         }
       },
 
-      rotateX: function (pct, fromValue, toValue) {
-        var deg = fromValue + ((toValue - fromValue) * pct);
-        return {
-          key: 'transform',
-          value: 'rotateX(' + deg + 'deg)'
-        }
-      },
-
-      rotateY: function (pct, fromValue, toValue) {
-        var deg = fromValue + ((toValue - fromValue) * pct);
-        return {
-          key: 'transform',
-          value: 'rotateY(' + deg + 'deg)'
-        }
-      },
-
-      scale: function (pct, fromValue, toValue) {
-        var num = fromValue + ((toValue - fromValue) * pct);
-        return {
-          key: 'transform',
-          value: 'scale(' + num + ')'
+      scale: {
+        key: 'transform',
+        value: function (pct, fromValue, toValue) {
+          return 'scale(' + (fromValue + ((toValue - fromValue) * pct)) + ')';
         }
       }
 
@@ -57,17 +49,17 @@
         , isPct
         , match
         , num;
-      return function (pct, fromValue, toValue) {
-        if (match = pctRegexp.exec(fromValue)) {
-          isPct = true;
-          fromValue = match[1];
-          toValue = pctRegexp.exec(toValue)[1];
-        }
-        num = fromValue + ((toValue - fromValue) * pct);
-        if (isPct) num = num + '%';
-        return {
-          key: property,
-          value: num
+      return {
+        key: property,
+        value: function (pct, fromValue, toValue) {
+          if (match = pctRegexp.exec(fromValue)) {
+            isPct = true;
+            fromValue = match[1];
+            toValue = pctRegexp.exec(toValue)[1];
+          }
+          num = fromValue + ((toValue - fromValue) * pct);
+          if (isPct) num = num + '%';
+          return num;
         }
       }
     };
@@ -80,7 +72,7 @@
 
     };
 
-    function colorAnimation (pct, fromValue, toValue) {
+    function ColorAnimation (pct, fromValue, toValue) {
       var rgba = {}
         , r
         , g
@@ -125,14 +117,14 @@
     }
 
     var Animation = function (action, fromY, from, toY, to) {
-      if ('function' === typeof action) {
-        this.action = action;
-      } else if (Animations[action]) {
-        this.action = Animations[action];
-      } else {
-        this.action = PropertyAnimation(action);
+      if (!('object' === typeof action)) {
+        if (Animations[action]) {
+          action = Animations[action];
+        } else {
+          action = PropertyAnimation(action);
+        }
       }
-
+      this.property = new Property(action.key, action.value);
       this.fromY = fromY;
       this.from = from;
       this.toY = toY;
@@ -146,14 +138,13 @@
           , action;
         if (pct < 0) pct = 0;
         if (pct > 1) pct = 1;
-        action = this.action(pct, this.from, this.to);
-        return new Property(action.key, action.value);
+        return this.property.value(pct, this.from, this.to);
       }
 
     };
 
     var Style = function (key, value, fromY, toY) {
-      this.key = key;
+      this.property = new Property(key, value);
       this.value = value;
       this.fromY = fromY;
       this.toY = toY;
@@ -163,27 +154,17 @@
 
       current: function (y) {
         var pct = this.toY ? (y - this.fromY) / (this.toY - this.fromY) : 1;
-        return new Property(this.key, pct > 0 ? this.value : '');
+        return pct > 0 ? this.property.value : '';
       }
 
     };
 
     var Roll = function () {
       this.components = [];
+      this.max = 0;
     };
 
     Roll.prototype = {
-
-      animate: function (el, fromY, fromProps, toY, toProps) {
-        if (!this.components[el]) this.components[el] = [];
-        var from, to;
-        for (var action in fromProps) {
-          from = fromProps[action];
-          to = toProps[action];
-          this.components[el].push(new Animation(action, fromY, from, toY, to));
-        }
-        return this;
-      },
 
       fixed: function (el, fromY, toY) {
         return this.position(el, 'fixed', fromY, toY);
@@ -205,64 +186,74 @@
         return this.style(el, 'position', type, fromY, toY);
       },
 
-      style: function (el, key, value, fromY, toY) {
-        if (!this.components[el]) this.components[el] = [];
+      animate: function (el, fromY, fromProps, toY, toProps) {
+        var animation;
+        for (var action in fromProps) {
+          animation = new Animation(action, fromY, fromProps[action], toY, toProps[action]);
+          AddComponent(this, el, animation);
+        }
+        return this;
+      },
 
-        var attrs;
+      style: function (el, key, value, fromY, toY) {
+        var attrs, style;
         if (arguments.length == 4) {
           attrs = key;
         } else {
           (attrs = {})[key] = value;
         }
-
         for (var key in attrs) {
-          this.components[el].push(new Style(key, attrs[key], fromY, toY));
+          style = new Style(key, attrs[key], fromY, toY);
+          AddComponent(this, el, style);
         }
-
         return this;
       },
 
       bind: function () {
-        var styles = {}
-          , $els = {}
-          , components
-          , component;
-        for (var el in this.components) {
-          $els[el] = _document_.querySelectorAll(el);
-          components = this.components[el];
-          for (var key in components) {
-            component = components[key];
-            if (!styles[el]) styles[el] = [];
-            styles[el].push(component.current.bind(component));
-          }
-        }
-        return _window_.onscroll = (function (styles, $els) {
-          return function () {
-            var y = _window_.pageYOffset
-              , props
-              , prop
-              , key
-              , val
-            for (var el in styles) {
-              props = {};
-              for (var i=0; i<styles[el].length; i++) {
-                prop = styles[el][i](y);
-                key = prop.key;
-                if (!props[key]) props[key] = [];
-                props[key].push(prop.value);
-              }
-              for (var key in props) {
-                val = StylePropertyHandler[key] ? StylePropertyHandler[key](props[key]) : props[key][props[key].length - 1];
-                for (var i=0; i<$els[el].length; i++) {
-                  $els[el][i].style[key] = val;
-                }
-              }
-            }
-          }
-        }(styles, $els));
+        var setFn, minHeightFn;
+        _window_.onscroll = setFn = SetElements(this);
+        _window_.onresize = minHeightFn = SetBodyMinHeight(this);
+        setFn(); minHeightFn();
       }
 
     };
+
+    function AddComponent (roll, el, component) {
+      var key = component.property.key;
+      if (!roll.components[el]) roll.components[el] = {};
+      if (!roll.components[el][key]) roll.components[el][key] = [];
+      roll.components[el][key].push(component.current.bind(component));
+      if (roll.max < (component.toY || 0)) roll.max = component.toY;
+    }
+
+    function SetBodyMinHeight(roll) {
+      var body = _document_.querySelector('body');
+      return function () {
+        body.style.minHeight = roll.max + _window_.innerHeight + 'px';
+      }
+    }
+
+    function SetElements (roll) {
+      var $els = {};
+      for (var el in roll.components) $els[el] = _document_.querySelectorAll(el);
+      return function () {
+        var y = _window_.pageYOffset
+          , props
+          , values
+          , output
+          , value;
+        for (var el in roll.components) {
+          props = roll.components[el];
+          for (var key in roll.components[el]) {
+            values = roll.components[el][key];
+            output = [];
+            for (var i=0; i<values.length; i++) output.push(values[i](y));
+            value = StylePropertyHandler[key] ? StylePropertyHandler[key](output) : output[output.length - 1];
+            for (var i=0; i<$els[el].length; i++) $els[el][i].style[key] = value;
+          }
+        }
+      }
+    }
 
     return Roll;
 
