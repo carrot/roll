@@ -206,10 +206,12 @@
       },
 
       bind: function () {
-        var setFn, minHeightFn;
-        _window_.onscroll = setFn = SetElements(this);
-        _window_.onresize = minHeightFn = SetBodyMinHeight(this);
-        setFn(); minHeightFn();
+        var setFn = SetElementsFn(this)
+          , minHeightFn = SetBodyMinHeightFn(this);
+        _window_.addEventListener('scroll', setFn);
+        _window_.addEventListener('resize', minHeightFn);
+        setFn();
+        minHeightFn();
       }
 
     };
@@ -222,14 +224,14 @@
       if (roll.max < (component.toY || 0)) roll.max = component.toY;
     }
 
-    function SetBodyMinHeight(roll) {
+    function SetBodyMinHeightFn (roll) {
       var body = _document_.querySelector('body');
       return function () {
         body.style.minHeight = roll.max + _window_.innerHeight + 'px';
       }
     }
 
-    function SetElements (roll) {
+    function SetElementsFn (roll) {
       var $els = {};
       for (var el in roll.components) $els[el] = _document_.querySelectorAll(el);
       return function () {
