@@ -111,11 +111,6 @@
       }
     };
 
-    var Property = function (key, value) {
-      this.key = key;
-      this.value = value;
-    }
-
     var Animation = function (action, fromY, from, toY, to) {
       if (!('object' === typeof action)) {
         if (Animations[action]) {
@@ -124,7 +119,8 @@
           action = PropertyAnimation(action);
         }
       }
-      this.property = new Property(action.key, action.value);
+      this.action = action;
+      this.key = action.key;
       this.fromY = fromY;
       this.from = from;
       this.toY = toY;
@@ -138,13 +134,13 @@
           , action;
         if (pct < 0) pct = 0;
         if (pct > 1) pct = 1;
-        return this.property.value(pct, this.from, this.to);
+        return this.action.value(pct, this.from, this.to);
       }
 
     };
 
     var Style = function (key, value, fromY, toY) {
-      this.property = new Property(key, value);
+      this.key = key;
       this.value = value;
       this.fromY = fromY;
       this.toY = toY;
@@ -154,7 +150,7 @@
 
       current: function (y) {
         var pct = this.toY ? (y - this.fromY) / (this.toY - this.fromY) : 1;
-        return pct > 0 ? this.property.value : '';
+        return pct > 0 ? this.value : '';
       }
 
     };
@@ -219,7 +215,7 @@
     };
 
     function AddComponent (roll, el, component) {
-      var key = component.property.key;
+      var key = component.key;
       if (!roll.components[el]) roll.components[el] = {};
       if (!roll.components[el][key]) roll.components[el][key] = [];
       roll.components[el][key].push(component.current.bind(component));
