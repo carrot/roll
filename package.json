@@ -1,0 +1,17 @@
+{
+  "name": "roll",
+  "version": "0.0.1",
+  "author": "Carrot Creative <dev@carrotcreative.com>",
+  "description": "A simple parallax scrolling library written in pure JavaScript.",
+  "license": "MIT",
+  "keywords": [
+    "parallax"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carrot/roll.git"
+  },
+  "devDependencies": {
+    "uglify-js": "1.x"
+  }
+}
