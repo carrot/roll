@@ -50,11 +50,19 @@
     }
 
     function ParseDefaultValue(value) {
-      var match = (new String(value)).match(/([-0-9\.]+)([a-zA-Z%]{1,3})?/);
-      return {
-        num: parseFloat(match[1])
-        , unit: match[2]
-      };
+      value = new String(value)
+      var regexp = /([-0-9\.]+)([a-zA-Z%]{1,3})?/g
+        , parse = []
+        , match
+        , num
+        , unit;
+      while (match = regexp.exec(value)) {
+        parse.push({
+          num: parseFloat(match[1])
+          , unit: match[2]
+        });
+      }
+      return parse;
     }
 
     var Tweener = {};
@@ -93,11 +101,18 @@
 
     Tweener.default.prototype = {
       tween: function (pct) {
-        var fromNum = this.fromValue.num
-          , toNum = this.toValue.num
-          , value = new String(fromNum + ((toNum - fromNum) * pct));
-        if (this.fromValue.unit) value += this.fromValue.unit;
-        return value;
+        var fromValue = this.fromValue
+          , toValue = this.toValue
+          , values = []
+          , from, to, value;
+        for (var i=0; i<fromValue.length; i++) {
+          from = fromValue[i]
+          to = toValue[i]
+          value = from.num + ((to.num - from.num) * pct)
+          if (from.unit) value = (new String(value)) + from.unit;
+          values.push(value);
+        }
+        return values.join(' ');
       }
     }
 
@@ -225,7 +240,7 @@
       }
     }
 
-    function CreateComponent (roll, fn, args) {
+    function CreateComponent (R, fn, args) {
       var $el = args[0]
         , properties, component, points, last;
       if (args.length == 2) {
@@ -235,12 +250,12 @@
       }
       for (property in properties) {
         component = new Component($el, fn, property, properties[property]);
-        roll.components.push(component);
+        R.components.push(component);
         points = component.points;
         last = points[points.length - 1];
-        if (last.Y > roll.max) roll.max = last.Y;
+        if (last.Y > R.max) R.max = last.Y;
       }
-      return roll;
+      return R;
     }
 
     function OnScrollFunction (R) {
