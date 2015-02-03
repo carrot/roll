@@ -1,266 +1,273 @@
-(function (_window_, _document_) {
+/*!
+* Copyright (c) 2015 Carrot Creative
+*
+* Permission is hereby granted, free of charge, to any person obtaining
+* a copy of this software and associated documentation files (the
+* "Software"), to deal in the Software without restriction, including
+* without limitation the rights to use, copy, modify, merge, publish,
+* distribute, sublicense, and/or sell copies of the Software, and to
+* permit persons to whom the Software is furnished to do so, subject to
+* the following conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+* LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+* OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+* WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+(function (W, D) {
 
   function __() {
 
-    var Animations = {
-
-      backgroundColor: {
-        key: 'background',
-        value: ColorAnimation
-      },
-
-      color: {
-        key: 'color',
-        value: ColorAnimation
-      },
-
-      rotate: {
-        key: 'transform',
-        value: function (pct, fromValue, toValue) {
-          return 'rotate(' + (fromValue + ((toValue - fromValue) * pct)) + 'deg)';
-        }
-      },
-
-      rotateX: {
-        key: 'transform',
-        value: function (pct, fromValue, toValue) {
-          return 'rotate(' + (fromValue + ((toValue - fromValue) * pct)) + 'deg)';
-        }
-      },
-
-      rotateY: {
-        key: 'transform',
-        value: function (pct, fromValue, toValue) {
-          return 'rotate(' + (fromValue + ((toValue - fromValue) * pct)) + 'deg)';
-        }
-      },
-
-      scale: {
-        key: 'transform',
-        value: function (pct, fromValue, toValue) {
-          return 'scale(' + (fromValue + ((toValue - fromValue) * pct)) + ')';
-        }
-      }
-
-    };
-
-    function PropertyAnimation (property) {
-      var pctRegexp = /^([0-9]{1,3})\%$/
-        , isPct
+    function ParseTransformValue (value) {
+      var regexp = /([a-zA-Z]+)\(([-a-zA-Z0-9\.\,\s%]+)\)/g
         , match
-        , num;
-      return {
-        key: property,
-        value: function (pct, fromValue, toValue) {
-          if (match = pctRegexp.exec(fromValue)) {
-            isPct = true;
-            fromValue = match[1];
-            toValue = pctRegexp.exec(toValue)[1];
+        , parse = {}
+        , valuesArray
+        , num
+        , unit
+      while (match = regexp.exec(value)) {
+        parse[match[1]] = (function (values) {
+          valuesArray = []
+          for (var i=0; i<values.length; i++) {
+            num = parseFloat(values[i]);
+            if (unit = values[i].match(/([a-zA-Z%]+)/)) unit = unit[1];
+            valuesArray.push({
+              num: num,
+              unit: unit
+            });
           }
-          num = fromValue + ((toValue - fromValue) * pct);
-          if (isPct) num = num + '%';
-          return num;
-        }
+          return valuesArray;
+        }(match[2].split(/,\s?/)));
       }
-    };
+      return parse;
+    }
 
-    var StylePropertyHandler = {
+    function ParseDefaultValue(value) {
+      var match = (new String(value)).match(/([-0-9\.]+)([a-zA-Z%]{1,3})?/);
+      return {
+        num: parseFloat(match[1])
+        , unit: match[2]
+      };
+    }
 
-      transform: function (values) {
+    var Tweener = {};
+
+    Tweener.transform = function (fromValue, toValue) {
+      this.fromValue = ParseTransformValue(fromValue);
+      this.toValue = ParseTransformValue(toValue);
+    }
+
+    Tweener.transform.prototype = {
+      tween: function (pct) {
+        var fromValue = this.fromValue
+          , toValue = this.toValue
+          , values = []
+          , from, to, prop, i, num, nums;
+        for (var prop in fromValue) {
+          from = fromValue[prop];
+          to = toValue[prop] || from;
+          nums = [];
+          for (i=0; i<from.length; i++) {
+            num = (from[i].num + ((to[i].num - from[i].num) * pct));
+            if (from[i].unit) num = num + from[i].unit;
+            nums.push(num);
+          }
+          nums = nums.join(',');
+          values.push(prop + '(' + nums + ')');
+        }
         return values.join(' ');
       }
+    }
 
-    };
+    Tweener.default = function (fromValue, toValue) {
+      this.fromValue = ParseDefaultValue(fromValue);
+      this.toValue = ParseDefaultValue(toValue);
+    }
 
-    function ColorAnimation (pct, fromValue, toValue) {
-      var rgba = {}
-        , r
-        , g
-        , b
-        , a;
-
-      var values = {
-        fromValue: fromValue,
-        toValue: toValue
+    Tweener.default.prototype = {
+      tween: function (pct) {
+        var fromNum = this.fromValue.num
+          , toNum = this.toValue.num
+          , value = new String(fromNum + ((toNum - fromNum) * pct));
+        if (this.fromValue.unit) value += this.fromValue.unit;
+        return value;
       }
+    }
 
-      for (var key in values) {
-        rgba[key] = (function(value){
-          var match;
-          if (match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/.exec(value)) {
-            return {
-              r: parseInt(match[1]),
-              g: parseInt(match[2]),
-              b: parseInt(match[3])
-            }
-          } else if (match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/.exec(value)) {
-            return {
-              r: parseInt(match[1], 16),
-              g: parseInt(match[2], 16),
-              b: parseInt(match[3], 16)
-            }
-          }
-        })(values[key]);
-      }
-      if (rgba.fromValue && rgba.toValue) {
-        r = parseInt((1-pct) * rgba.fromValue.r + pct * rgba.toValue.r);
-        g = parseInt((1-pct) * rgba.fromValue.g + pct * rgba.toValue.g);
-        b = parseInt((1-pct) * rgba.fromValue.b + pct * rgba.toValue.b);
-        if (rgba.fromValue.a && rgba.toValue.a) a = parseInt((1-pct) * rgba.fromValue.a + pct * rgba.toValue.a);
-        return a ? 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')' : 'rgb(' + r + ', ' + g + ', ' + b + ')';
-      }
-    };
+    var Tween = function (property, fromPoint, toPoint) {
+      if (!toPoint) toPoint = fromPoint;
+      this.tweener = new (Tweener[property] || Tweener.default)(fromPoint.value, toPoint.value);
+      this.fromY = fromPoint.Y;
+      this.toY = toPoint.Y;
+    }
 
-    var Animation = function (action, fromY, from, toY, to) {
-      if (!('object' === typeof action)) {
-        if (Animations[action]) {
-          action = Animations[action];
-        } else {
-          action = PropertyAnimation(action);
+    Tween.prototype = {
+      current: function (Y) {
+        var pct = 0
+          , fromY = this.fromY
+          , toY = this.toY;
+        if (Y >= fromY && Y <= toY) {
+          pct = (Y - fromY) / (toY - fromY);
+        } else if (Y > toY) {
+          pct = 1;
+        }
+        return this.tweener.tween(pct);
+      }
+    }
+
+    var Point = function (Y, value) {
+      this.Y = Y;
+      this.value = value;
+    }
+
+    var Points = function (object) {
+      var keys = [], _points = [];
+      for (var key in object) keys.push(parseInt(key));
+      keys.sort(function(a, b){return a-b;});
+      for (var i=0; i<keys.length; i++) _points.push(new Point(keys[i], object[keys[i]]));
+      return _points;
+    }
+
+    var Component = function ($el, Klass, property, points) {
+      this.$el = $el;
+      this.property = property;
+      this.points = Points(points);
+      this.child = new Klass(this);
+    }
+
+    Component.prototype = {
+      set: function (Y) {
+        var $el = this.$el;
+        if ($el.nodeName) {
+          $el = [$el];
+        } else if ('string' === typeof $el) {
+          $el = D.querySelectorAll($el);
+        }
+        for (var i=0; i<$el.length; i++) {
+          $el[i].style[this.property] = this.child.current(Y);
         }
       }
-      this.action = action;
-      this.key = action.key;
-      this.fromY = fromY;
-      this.from = from;
-      this.toY = toY;
-      this.to = to;
-    };
+    }
+
+    var Animation = function (component) {
+      var tweens = []
+        , points = component.points
+        , current, next;
+      for (var i=0; i<points.length; i++) {
+        current = points[i];
+        next = points[i+1];
+        tweens.push(new Tween(property, current, next));
+      }
+      this.tweens = tweens;
+    }
 
     Animation.prototype = {
-
-      current: function (y) {
-        var pct = (y - this.fromY) / (this.toY - this.fromY)
-          , action;
-        if (pct < 0) pct = 0;
-        if (pct > 1) pct = 1;
-        return this.action.value(pct, this.from, this.to);
-      }
-
-    };
-
-    var Style = function (key, value, fromY, toY) {
-      this.key = key;
-      this.value = value;
-      this.fromY = fromY;
-      this.toY = toY;
-    };
-
-    Style.prototype = {
-
-      current: function (y) {
-        var pct = this.toY ? (y - this.fromY) / (this.toY - this.fromY) : 1;
-        return pct > 0 ? this.value : '';
-      }
-
-    };
-
-    var Roll = function () {
-      this.components = [];
-      this.max = 0;
-    };
-
-    Roll.prototype = {
-
-      fixed: function (el, fromY, toY) {
-        return this.position(el, 'fixed', fromY, toY);
-      },
-
-      relative: function (el, fromY, toY) {
-        return this.position(el, 'relative', fromY, toY);
-      },
-
-      static: function (el, fromY, toY) {
-        return this.position(el, 'static', fromY, toY);
-      },
-
-      absolute: function (el, fromY, toY) {
-        return this.position(el, 'absolute', fromY, toY);
-      },
-
-      position: function (el, type, fromY, toY) {
-        return this.style(el, 'position', type, fromY, toY);
-      },
-
-      animate: function (el, fromY, fromProps, toY, toProps) {
-        var animation;
-        for (var action in fromProps) {
-          animation = new Animation(action, fromY, fromProps[action], toY, toProps[action]);
-          AddComponent(this, el, animation);
-        }
-        return this;
-      },
-
-      style: function (el, key, value, fromY, toY) {
-        var attrs, style;
-        if (arguments.length == 4) {
-          attrs = key;
-        } else {
-          (attrs = {})[key] = value;
-        }
-        for (var key in attrs) {
-          style = new Style(key, attrs[key], fromY, toY);
-          AddComponent(this, el, style);
-        }
-        return this;
-      },
-
-      bind: function () {
-        var setFn = SetElementsFn(this)
-          , minHeightFn = SetBodyMinHeightFn(this);
-        _window_.addEventListener('scroll', setFn);
-        _window_.addEventListener('resize', minHeightFn);
-        setFn();
-        minHeightFn();
-      }
-
-    };
-
-    function AddComponent (roll, el, component) {
-      var key = component.key;
-      if (!roll.components[el]) roll.components[el] = {};
-      if (!roll.components[el][key]) roll.components[el][key] = [];
-      roll.components[el][key].push(component.current.bind(component));
-      if (roll.max < (component.toY || 0)) roll.max = component.toY;
-    }
-
-    function SetBodyMinHeightFn (roll) {
-      var body = _document_.querySelector('body');
-      return function () {
-        body.style.minHeight = roll.max + _window_.innerHeight + 'px';
-      }
-    }
-
-    function SetElementsFn (roll) {
-      var $els = {};
-      for (var el in roll.components) $els[el] = _document_.querySelectorAll(el);
-      return function () {
-        var y = _window_.pageYOffset
-          , props
-          , values
-          , output
-          , value;
-        for (var el in roll.components) {
-          props = roll.components[el];
-          for (var key in roll.components[el]) {
-            values = roll.components[el][key];
-            output = [];
-            for (var i=0; i<values.length; i++) output.push(values[i](y));
-            value = StylePropertyHandler[key] ? StylePropertyHandler[key](output) : output[output.length - 1];
-            for (var i=0; i<$els[el].length; i++) $els[el][i].style[key] = value;
+      current: function (Y) {
+        var tweens = this.tweens
+          , len = tweens.length
+          , tween
+          , current;
+        for (var i=0; i<len; i++) {
+          tween = tweens[i];
+          if ( (Y >= tween.fromY && Y <= tween.toY)
+            || (Y <= tween.fromY && i == 0)
+            || (Y >= tween.toY && i == len - 1) ) {
+            break;
           }
         }
+        return tween.current(Y);
+      }
+    }
+
+    var Style = function (component) {
+      this.points = component.points;
+    }
+
+    Style.prototype = {
+      current: function (Y) {
+        var points = this.points
+          , current = new String();
+        for (var i=0; i<points.length; i++) {
+          point = points[i];
+          if (Y >= point.Y) current = point.value;
+        }
+        return current;
+      }
+    }
+
+    var Roll = function (options) {
+      this.options = options || {};
+      this.components = [];
+      this.max = 0;
+    }
+
+    Roll.prototype = {
+      animate: function ($el, property, points) {
+        return CreateComponent(this, Animation, arguments);
+      },
+      style: function ($el, property, points) {
+        return CreateComponent(this, Style, arguments);
+      },
+      bind: function () {
+        var scrollFn = OnScrollFunction(this)
+          , resizeFn = OnResizeFunction(this);
+        W.addEventListener('scroll', scrollFn);
+        W.addEventListener('resize', resizeFn);
+        scrollFn();
+        resizeFn();
+      }
+    }
+
+    function CreateComponent (roll, fn, args) {
+      var $el = args[0]
+        , properties, component, points, last;
+      if (args.length == 2) {
+        properties = args[1];
+      } else {
+        (properties = {})[args[1]] = args[2];
+      }
+      for (property in properties) {
+        component = new Component($el, fn, property, properties[property]);
+        roll.components.push(component);
+        points = component.points;
+        last = points[points.length - 1];
+        if (last.Y > roll.max) roll.max = last.Y;
+      }
+      return roll;
+    }
+
+    function OnScrollFunction (R) {
+      return function () {
+        var Y = W.pageYOffset
+          , component;
+        for (var i=0; i<R.components.length; i++) {
+          component = R.components[i];
+          component.set(Y);
+        }
+      }
+    }
+
+    function OnResizeFunction (R) {
+      return function () {
+        D.body.style.minHeight = (R.max + W.innerHeight) + 'px';
       }
     }
 
     return Roll;
 
-  };
+  }
 
   if ('function' === typeof define && define.amd) {
     define(__);
   } else {
-    _window_.Roll = __();
+    W.Roll = __();
   };
 
-})(window, document);
+}(window, document));
