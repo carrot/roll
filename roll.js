@@ -225,7 +225,7 @@
       }
     }
 
-    function CreateComponent (roll, fn, args) {
+    function CreateComponent (R, fn, args) {
       var $el = args[0]
         , properties, component, points, last;
       if (args.length == 2) {
@@ -235,12 +235,12 @@
       }
       for (property in properties) {
         component = new Component($el, fn, property, properties[property]);
-        roll.components.push(component);
+        R.components.push(component);
         points = component.points;
         last = points[points.length - 1];
-        if (last.Y > roll.max) roll.max = last.Y;
+        if (last.Y > R.max) R.max = last.Y;
       }
-      return roll;
+      return R;
     }
 
     function OnScrollFunction (R) {
