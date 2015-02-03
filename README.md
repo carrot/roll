@@ -7,7 +7,7 @@ A simple parallax scrolling library written in pure JavaScript.
 roll has no dependencies; simply include the library.
 
 ```html
-<script src="/roll.js"></script>
+<script src="/roll.min.js"></script>
 ```
 
 ## Usage
@@ -16,10 +16,9 @@ roll has no dependencies; simply include the library.
 var roll = new Roll();
 
 roll
-  .animate('#foo', 200, { rotate: 0 }, 500, { rotate: 180 } )
-  .animate('#bar', 500, { backgroundColor: '#ff0000' }, 1000, { backgroundColor: 'rgba(0, 0, 0)' })
-  .style('#foo', 'textAlign', 'center', 200, 500)
-  .fixed('#bar', 500, 1000)
+  .animate('#foo', { transform: { 0: 'rotateX(0deg) scale(0)', 500: 'rotateX(20deg) scale(1)' } })
+  .animate('#bar', { opacity: { 500: 1, 1000: 2 } })
+  .style('#foo', { position: { 500: 'fixed', 1000: 'relative' } })
   .bind();
 ```
 
