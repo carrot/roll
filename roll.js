@@ -170,6 +170,7 @@
       this.options = options || {};
       this.components = [];
       this.max = 0;
+      this.collectionOffset = 0;
     }
 
     Roll.prototype = {
@@ -186,6 +187,29 @@
         W.addEventListener('resize', resizeFn);
         scrollFn();
         resizeFn();
+      }
+    }
+
+    Roll.Collection = function () {
+      this.rolls = [];
+      this.curY = 0;
+    }
+
+    Roll.Collection.prototype = {
+      next: function (offset, roll) {
+        if (!roll) {
+          offset = 0;
+          roll = offset;
+        }
+        roll.collectionOffset = this.curY + offset;
+        this.curY =+ roll.max;
+        this.rolls.push(roll);
+        return this;
+      },
+      bind: function () {
+        for (var i=0; i<this.rolls.next; i++) {
+          this.rolls[i].bind();
+        }
       }
     }
 
@@ -209,7 +233,7 @@
 
     function OnScrollFunction (R) {
       return function () {
-        var Y = W.pageYOffset
+        var Y = (W.pageYOffset + R.collectionOffset)
           , component;
         for (var i=0; i<R.components.length; i++) {
           component = R.components[i];
