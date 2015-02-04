@@ -25,94 +25,43 @@
 
   function __() {
 
-    function ParseTransformValue (value) {
-      var regexp = /([a-zA-Z]+)\(([-a-zA-Z0-9\.\,\s%]+)\)/g
-        , match
-        , parse = {}
-        , valuesArray
-        , num
-        , unit
-      while (match = regexp.exec(value)) {
-        parse[match[1]] = (function (values) {
-          valuesArray = []
-          for (var i=0; i<values.length; i++) {
-            num = parseFloat(values[i]);
-            if (unit = values[i].match(/([a-zA-Z%]+)/)) unit = unit[1];
-            valuesArray.push({
-              num: num,
-              unit: unit
-            });
-          }
-          return valuesArray;
-        }(match[2].split(/,\s?/)));
-      }
-      return parse;
+    var RegexpValue = /[\-+]?[\d]*\.?[\d]+/g
+      , ParseWildcard = '{?}'
+      , ParseWildcardRegexp = /\{\?\}/g;
+
+    function ParseValue (value) {
+      var nums = [];
+      value = new String(value).replace(RegexpValue, function (num) {
+        nums.push(parseFloat(num));
+        return ParseWildcard;
+      });
+      return [value, nums]
     }
 
-    function ParseDefaultValue(value) {
-      value = new String(value)
-      var regexp = /([-0-9\.]+)([a-zA-Z%]{1,3})?/g
-        , parse = []
-        , match
-        , num
-        , unit;
-      while (match = regexp.exec(value)) {
-        parse.push({
-          num: parseFloat(match[1])
-          , unit: match[2]
-        });
-      }
-      return parse;
+    function CompileValues (fromValue, toValue, pct) {
+      var i = 0
+        , fromNum
+        , toNum;
+      return fromValue[0].replace(ParseWildcardRegexp, function () {
+        from = fromValue[1][i];
+        to = toValue[1][i];
+        i++;
+        return (from + ((to - from) * pct));
+      });
     }
 
     var Tweener = {};
 
-    Tweener.transform = function (fromValue, toValue) {
-      this.fromValue = ParseTransformValue(fromValue);
-      this.toValue = ParseTransformValue(toValue);
-    }
-
-    Tweener.transform.prototype = {
-      tween: function (pct) {
-        var fromValue = this.fromValue
-          , toValue = this.toValue
-          , values = []
-          , from, to, prop, i, num, nums;
-        for (var prop in fromValue) {
-          from = fromValue[prop];
-          to = toValue[prop] || from;
-          nums = [];
-          for (i=0; i<from.length; i++) {
-            num = (from[i].num + ((to[i].num - from[i].num) * pct));
-            if (from[i].unit) num = num + from[i].unit;
-            nums.push(num);
-          }
-          nums = nums.join(',');
-          values.push(prop + '(' + nums + ')');
-        }
-        return values.join(' ');
-      }
-    }
-
     Tweener.default = function (fromValue, toValue) {
-      this.fromValue = ParseDefaultValue(fromValue);
-      this.toValue = ParseDefaultValue(toValue);
+      this.fromValue = ParseValue(fromValue);
+      this.toValue = ParseValue(toValue);
     }
 
     Tweener.default.prototype = {
       tween: function (pct) {
         var fromValue = this.fromValue
-          , toValue = this.toValue
-          , values = []
-          , from, to, value;
-        for (var i=0; i<fromValue.length; i++) {
-          from = fromValue[i]
-          to = toValue[i]
-          value = from.num + ((to.num - from.num) * pct)
-          if (from.unit) value = (new String(value)) + from.unit;
-          values.push(value);
-        }
-        return values.join(' ');
+          , toValue = this.toValue;
+        return CompileValues(fromValue, toValue, pct);
       }
     }
 
