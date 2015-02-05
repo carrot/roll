@@ -21,7 +21,7 @@
 * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-(function (W, D) {
+(function (windowObject, documentObject) {
 
   function __() {
 
@@ -29,25 +29,32 @@
       , ParseWildcard = '{?}'
       , ParseWildcardRegexp = /\{\?\}/g;
 
-    function ParseValue (value) {
-      var nums = [];
-      value = new String(value).replace(RegexpValue, function (num) {
-        nums.push(parseFloat(num));
-        return ParseWildcard;
-      });
-      return [value, nums]
+    var Animation = function (component) {
+      var tweens = []
+        , points = component.points
+        , current, next;
+      for (var i=0; i<points.length; i++) {
+        current = points[i];
+        next = points[i+1];
+        tweens.push(new Tween(component.property, current, next));
+      }
+      this.tweens = tweens;
     }
 
-    function CompileValues (fromValue, toValue, pct) {
-      var i = 0
-        , fromNum
-        , toNum;
-      return fromValue[0].replace(ParseWildcardRegexp, function () {
-        from = fromValue[1][i];
-        to = toValue[1][i];
-        i++;
-        return (from + ((to - from) * pct));
-      });
+    Animation.prototype = {
+      current: function (Y) {
+        var tweens = this.tweens
+          , len = tweens.length
+          , tween
+          , current;
+        for (var i=0; i<len; i++) {
+          tween = tweens[i];
+          if (Y >= tween.fromY || (Y <= tween.fromY && i == 0)){
+            current = tween.current(Y);
+          }
+        }
+        return current;
+      }
     }
 
     var Tweener = {};
@@ -86,68 +93,25 @@
       }
     }
 
-    var Point = function (Y, value) {
-      this.Y = Y;
-      this.value = value;
+    function ParseValue (value) {
+      var nums = [];
+      value = new String(value).replace(RegexpValue, function (num) {
+        nums.push(parseFloat(num));
+        return ParseWildcard;
+      });
+      return [value, nums]
     }
 
-    var Points = function (object) {
-      var keys = [], _points = [];
-      for (var key in object) keys.push(parseInt(key));
-      keys.sort(function(a, b){return a-b;});
-      for (var i=0; i<keys.length; i++) _points.push(new Point(keys[i], object[keys[i]]));
-      return _points;
-    }
-
-    var Component = function ($el, Klass, property, points) {
-      this.$el = $el;
-      this.property = property;
-      this.points = Points(points);
-      this.child = new Klass(this);
-    }
-
-    Component.prototype = {
-      set: function (Y) {
-        var $el = this.$el;
-        if ($el.nodeName) {
-          $el = [$el];
-        } else if ('string' === typeof $el) {
-          $el = D.querySelectorAll($el);
-        }
-        for (var i=0; i<$el.length; i++) {
-          $el[i].style[this.property] = this.child.current(Y);
-        }
-      }
-    }
-
-    var Animation = function (component) {
-      var tweens = []
-        , points = component.points
-        , current, next;
-      for (var i=0; i<points.length; i++) {
-        current = points[i];
-        next = points[i+1];
-        tweens.push(new Tween(property, current, next));
-      }
-      this.tweens = tweens;
-    }
-
-    Animation.prototype = {
-      current: function (Y) {
-        var tweens = this.tweens
-          , len = tweens.length
-          , tween
-          , current;
-        for (var i=0; i<len; i++) {
-          tween = tweens[i];
-          if ( (Y >= tween.fromY && Y <= tween.toY)
-            || (Y <= tween.fromY && i == 0)
-            || (Y >= tween.toY && i == len - 1) ) {
-            break;
-          }
-        }
-        return tween.current(Y);
-      }
+    function CompileValues (fromValue, toValue, pct) {
+      var i = 0
+        , fromNum
+        , toNum;
+      return fromValue[0].replace(ParseWildcardRegexp, function () {
+        from = fromValue[1][i];
+        to = toValue[1][i];
+        i++;
+        return (from + ((to - from) * pct));
+      });
     }
 
     var Style = function (component) {
@@ -166,61 +130,246 @@
       }
     }
 
-    var Roll = function (options) {
-      this.options = options || {};
-      this.components = [];
+    var Point = function (Y, value) {
+      this.Y = Y;
+      this.value = value;
+    }
+
+    var Collection = function (object) {
+      object = object || {};
+      this.points = [];
+      for (var Y in object) {
+        this.add(Y, object[Y]);
+      }
+    }
+
+    Collection.prototype = {
+      add: function (Y, value) {
+        var points = this.points.slice(0)
+          , point = new Point(parseInt(Y), value)
+          , isAdded = false;
+        for (var i=0; i<this.points.length; i++) {
+          if (this.points[i].Y > point.Y) {
+            points.splice(i, 0, point);
+            isAdded = true;
+          }
+        }
+        if (!isAdded) points.push(point);
+        this.points = points;
+        return this;
+      },
+      merge: function (at, collection) {
+        var points = collection.points
+          , value;
+        for (var i=0; i<points.length; i++) {
+          action = points[i];
+          this.add((at + action.Y), action.value);
+        }
+        return this;
+      }
+    }
+
+    var Action = function (Klass, property, points) {
+      var points = this.points = (new Collection(points)).points;
+      this.max = points[points.length - 1].Y;
+      this.property = property;
+      this.klass = new Klass(this);
+    }
+
+    Action.prototype = {
+      current: function (Y) {
+        return this.klass.current(Y);
+      }
+    }
+
+    var Element = function (selector) {
+      this.selector = selector;
+      this.collection = new Collection();
+    }
+
+    Element.prototype = {
+      add: function (Y, action) {
+        this.collection.add(Y, action);
+        return this;
+      },
+      set: function (wY) {
+        var $el = this.selector
+          , collection = this.collection
+          , points = collection.points
+          , point
+          , action
+          , Y;
+        if ($el.nodeName) {
+          $el = [$el]
+        } else if ('string' === typeof $el) {
+          $el = documentObject.querySelectorAll($el);
+        }
+        for (var x=0; x<points.length; x++) {
+          point = points[x];
+          action = point.value;
+          Y = (wY - point.Y);
+          if (Y > 0
+            || (Y < 0 && x == 0) ) {
+            for (var y=0; y<$el.length; y++) {
+              $el[y].style[action.property] = action.current(Y);
+            }
+          }
+        }
+        return this;
+      }
+    }
+
+    var Storyboard = function () {
+      this.elements = [];
       this.max = 0;
     }
 
-    Roll.prototype = {
-      animate: function ($el, property, points) {
-        return CreateComponent(this, Animation, arguments);
+    Storyboard.prototype = {
+      add: function (selector, Y, action) {
+        var elements = this.elements
+          , element
+          , max;
+        for (var i=0; i<elements.length; i++) {
+          if (elements[i].selector == selector) {
+            element = elements[i];
+            break;
+          }
+        }
+        if (!element) {
+          element = new Element(selector);
+          elements.push(element);
+        }
+        if (action) {
+          element.add(Y, action);
+          max = Y + action.max;
+          if (max > this.max) this.max = max;
+        }
+        this.elements = elements;
+        return this;
       },
-      style: function ($el, property, points) {
-        return CreateComponent(this, Style, arguments);
-      },
-      bind: function () {
-        var scrollFn = OnScrollFunction(this)
-          , resizeFn = OnResizeFunction(this);
-        W.addEventListener('scroll', scrollFn);
-        W.addEventListener('resize', resizeFn);
-        scrollFn();
-        resizeFn();
+      merge: function (at, storyboard) {
+        var elements = storyboard.elements
+          , element, collection, points;
+        for (var x=0; x<elements.length; x++) {
+          element = elements[x];
+          collection = element.collection;
+          points = collection.points;
+          for (var y=0; y<points.length; y++) {
+            point = points[y];
+            this.add(element.selector, (point.Y + parseInt(at)), point.value);
+          }
+        }
+        return this;
       }
     }
 
-    function CreateComponent (R, fn, args) {
-      var $el = args[0]
-        , properties, component, points, last;
-      if (args.length == 2) {
-        properties = args[1];
-      } else {
-        (properties = {})[args[1]] = args[2];
-      }
-      for (property in properties) {
-        component = new Component($el, fn, property, properties[property]);
-        R.components.push(component);
-        points = component.points;
-        last = points[points.length - 1];
-        if (last.Y > R.max) R.max = last.Y;
-      }
-      return R;
-    }
-
-    function OnScrollFunction (R) {
+    var OnScrollFunction = function (storyboard) {
       return function () {
-        var Y = W.pageYOffset
-          , component;
-        for (var i=0; i<R.components.length; i++) {
-          component = R.components[i];
-          component.set(Y);
+        var wY = windowObject.pageYOffset
+          , elements = storyboard.elements
+          , element;
+        for (var i=0; i<elements.length; i++) {
+          element = elements[i];
+          element.set(wY);
         }
       }
     }
 
-    function OnResizeFunction (R) {
+    var OnResizeFunction = function (storyboard) {
       return function () {
-        D.body.style.minHeight = (R.max + W.innerHeight) + 'px';
+        documentObject.body.style.minHeight = (storyboard.max + windowObject.innerHeight) + 'px';
+      }
+    }
+
+    var Roll = function () {
+      this.scenes = {};
+      this.ats = {};
+      this.befores = {};
+      this.afters = {};
+    }
+
+    Roll.prototype = {
+      add: function (name, scene) {
+        if ('function' === typeof scene) {
+          var fn = scene;
+          scene = new Scene();
+          fn(scene);
+        }
+        this.scenes[name] = scene;
+        return this;
+      },
+      at: function (Y, name) {
+        var ats = this.ats[Y] || [];
+        ats.push(name);
+        this.ats[Y] = ats;
+        return this;
+      },
+      before: function (before, name) {
+        var befores = this.befores[before] || [];
+        befores.push(name);
+        this.befores[before] = befores;
+        return this;
+      },
+      after: function (after, name) {
+        var afters = this.afters[after] || [];
+        afters.push(name);
+        this.afters[after] = afters;
+        return this;
+      },
+      bind: function () {
+        var scenes = this.scenes
+          , storyboard = new Storyboard()
+          , name, sceneA, sceneB, Y, yInt;
+        for (Y in this.ats) {
+          yInt = parseInt(Y);
+          name = this.ats[Y];
+          sceneA = scenes[name];
+          for (var before in this.befores) {
+            if (before == name) {
+              sceneB = scenes[this.befores[before]];
+              storyboard.merge((yInt - sceneB.storyboard.max), sceneB.storyboard);
+            }
+          }
+          for (var after in this.afters) {
+            if (after == name) {
+              sceneB = scenes[this.afters[after]];
+              storyboard.merge((yInt + sceneA.storyboard.max), sceneB.storyboard);
+            }
+          }
+          storyboard.merge(Y, sceneA.storyboard);
+        }
+        var OnScrollFn = OnScrollFunction(storyboard)
+          , OnResizeFn = OnResizeFunction(storyboard);
+        windowObject.addEventListener('scroll', OnScrollFn);
+        windowObject.addEventListener('resize', OnResizeFn);
+        OnScrollFn();
+        OnResizeFn();
+      }
+    }
+
+    var Scene = Roll.Scene = function () {
+      this.storyboard = new Storyboard();
+    }
+
+    Scene.prototype = {
+      animate: function ($el, property, points) {
+        return this.action(Animation, $el, property, points);
+      },
+      style: function ($el, property, points) {
+        return this.action(Style, $el, property, points);
+      },
+      action: function (Klass, $el, property, points) {
+        var properties;
+        if ('undefined' === typeof points) {
+          properties = property;
+        } else {
+          (properties = {})[property] = points;
+        }
+        for (property in properties) {
+          action = new Action(Klass, property, properties[property]);
+          this.storyboard.add($el, 0, action);
+        }
+        return this;
       }
     }
 
@@ -231,7 +380,7 @@
   if ('function' === typeof define && define.amd) {
     define(__);
   } else {
-    W.Roll = __();
+    windowObject.Roll = __();
   };
 
 }(window, document));
