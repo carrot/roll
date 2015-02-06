@@ -263,7 +263,7 @@
       }
     }
 
-    var OnScrollFunction = function (storyboard) {
+    function OnScrollFunction (storyboard) {
       return function () {
         var wY = windowObject.pageYOffset
           , elements = storyboard.elements
@@ -275,17 +275,15 @@
       }
     }
 
-    var OnResizeFunction = function (storyboard) {
+    function OnResizeFunction (storyboard) {
       return function () {
-        documentObject.body.style.minHeight = (storyboard.max + windowObject.innerHeight) + 'px';
+        documentObject.body.style.minHeight = ((storyboard.max + windowObject.innerHeight) + 'px');
       }
     }
 
     var Roll = function () {
       this.scenes = {};
       this.ats = {};
-      this.befores = {};
-      this.afters = {};
     }
 
     Roll.prototype = {
@@ -304,45 +302,24 @@
         this.ats[Y] = ats;
         return this;
       },
-      before: function (before, name) {
-        var befores = this.befores[before] || [];
-        befores.push(name);
-        this.befores[before] = befores;
-        return this;
-      },
-      after: function (after, name) {
-        var afters = this.afters[after] || [];
-        afters.push(name);
-        this.afters[after] = afters;
-        return this;
-      },
       bind: function () {
-        var scenes = this.scenes
-          , storyboard = new Storyboard()
-          , name, sceneA, sceneB, Y, yInt;
-        for (Y in this.ats) {
-          yInt = parseInt(Y);
-          name = this.ats[Y];
-          sceneA = scenes[name];
-          for (var before in this.befores) {
-            if (before == name) {
-              sceneB = scenes[this.befores[before]];
-              storyboard.merge((yInt - sceneB.storyboard.max), sceneB.storyboard);
-            }
+        var storyboard = new Storyboard()
+          , names
+          , scene
+          , OnScrollFn
+          , OnResizeFn;
+        for (var Y in this.ats) {
+          names = this.ats[Y];
+          for (var i=0; i<names.length; i++) {
+            scene = this.scenes[names[i]];
+            storyboard.merge(Y, scene.storyboard);
           }
-          for (var after in this.afters) {
-            if (after == name) {
-              sceneB = scenes[this.afters[after]];
-              storyboard.merge((yInt + sceneA.storyboard.max), sceneB.storyboard);
-            }
-          }
-          storyboard.merge(Y, sceneA.storyboard);
         }
-        var OnScrollFn = OnScrollFunction(storyboard)
-          , OnResizeFn = OnResizeFunction(storyboard);
+        OnScrollFn = OnScrollFunction(storyboard);
         windowObject.addEventListener('scroll', OnScrollFn);
-        windowObject.addEventListener('resize', OnResizeFn);
         OnScrollFn();
+        OnResizeFn = OnResizeFunction(storyboard);
+        windowObject.addEventListener('resize', OnResizeFn);
         OnResizeFn();
       }
     }
