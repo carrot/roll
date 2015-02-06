@@ -184,34 +184,39 @@
 
     var Element = function (selector) {
       this.selector = selector;
-      this.collection = new Collection();
+      this.actions = {};
     }
 
     Element.prototype = {
       add: function (Y, action) {
-        this.collection.add(Y, action);
+        var property = action.property
+          , collection;
+        if (!(collection = this.actions[property])) collection = new Collection();
+        collection.add(Y, action);
+        this.actions[property] = collection;
         return this;
       },
       set: function (wY) {
         var $el = this.selector
-          , collection = this.collection
-          , points = collection.points
-          , point
-          , action
-          , Y;
+          , actions = this.actions
+          , collection, points
+          , point, action, Y;
         if ($el.nodeName) {
           $el = [$el]
         } else if ('string' === typeof $el) {
           $el = documentObject.querySelectorAll($el);
         }
-        for (var x=0; x<points.length; x++) {
-          point = points[x];
-          action = point.value;
-          Y = (wY - point.Y);
-          if (Y > 0
-            || (Y < 0 && x == 0) ) {
-            for (var y=0; y<$el.length; y++) {
-              $el[y].style[action.property] = action.current(Y);
+        for (var property in actions) {
+          collection = actions[property];
+          points = collection.points;
+          for (var x=0; x<points.length; x++) {
+            point = points[x];
+            action = point.value;
+            Y = (wY - point.Y);
+            if ( (Y > 0) || (Y < 0 && x == 0) ) {
+              for (var y=0; y<$el.length; y++) {
+                $el[y].style[property] = action.current(Y);
+              }
             }
           }
         }
@@ -225,7 +230,7 @@
     }
 
     Storyboard.prototype = {
-      add: function (selector, Y, action) {
+      add: function (Y, selector, action) {
         var elements = this.elements
           , element
           , max;
@@ -249,14 +254,18 @@
       },
       merge: function (at, storyboard) {
         var elements = storyboard.elements
-          , element, collection, points;
+          , element, actions, collection
+          , points, point;
         for (var x=0; x<elements.length; x++) {
           element = elements[x];
-          collection = element.collection;
-          points = collection.points;
-          for (var y=0; y<points.length; y++) {
-            point = points[y];
-            this.add(element.selector, (point.Y + parseInt(at)), point.value);
+          actions = element.actions;
+          for (var property in actions) {
+            collection = actions[property];
+            points = collection.points;
+            for (var i=0; i<points.length; i++) {
+              point = points[i];
+              this.add((parseInt(at) + point.Y), element.selector, point.value);
+            }
           }
         }
         return this;
@@ -344,7 +353,7 @@
         }
         for (property in properties) {
           action = new Action(Klass, property, properties[property]);
-          this.storyboard.add($el, 0, action);
+          this.storyboard.add(0, $el, action);
         }
         return this;
       }
