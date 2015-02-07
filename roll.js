@@ -21,7 +21,7 @@
 * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-(function (windowObject, documentObject) {
+(function (win, doc) {
 
   function __() {
 
@@ -184,34 +184,39 @@
 
     var Element = function (selector) {
       this.selector = selector;
-      this.collection = new Collection();
+      this.actions = {};
     }
 
     Element.prototype = {
       add: function (Y, action) {
-        this.collection.add(Y, action);
+        var property = action.property
+          , collection;
+        if (!(collection = this.actions[property])) collection = new Collection();
+        collection.add(Y, action);
+        this.actions[property] = collection;
         return this;
       },
       set: function (wY) {
         var $el = this.selector
-          , collection = this.collection
-          , points = collection.points
-          , point
-          , action
-          , Y;
+          , actions = this.actions
+          , collection, points
+          , point, action, Y;
         if ($el.nodeName) {
           $el = [$el]
         } else if ('string' === typeof $el) {
-          $el = documentObject.querySelectorAll($el);
+          $el = doc.querySelectorAll($el);
         }
-        for (var x=0; x<points.length; x++) {
-          point = points[x];
-          action = point.value;
-          Y = (wY - point.Y);
-          if (Y > 0
-            || (Y < 0 && x == 0) ) {
-            for (var y=0; y<$el.length; y++) {
-              $el[y].style[action.property] = action.current(Y);
+        for (var property in actions) {
+          collection = actions[property];
+          points = collection.points;
+          for (var x=0; x<points.length; x++) {
+            point = points[x];
+            action = point.value;
+            Y = (wY - point.Y);
+            if ( (Y > 0) || (Y < 0 && x == 0) ) {
+              for (var y=0; y<$el.length; y++) {
+                $el[y].style[property] = action.current(Y);
+              }
             }
           }
         }
@@ -225,7 +230,7 @@
     }
 
     Storyboard.prototype = {
-      add: function (selector, Y, action) {
+      add: function (Y, selector, action) {
         var elements = this.elements
           , element
           , max;
@@ -249,23 +254,27 @@
       },
       merge: function (at, storyboard) {
         var elements = storyboard.elements
-          , element, collection, points;
+          , element, actions, collection
+          , points, point;
         for (var x=0; x<elements.length; x++) {
           element = elements[x];
-          collection = element.collection;
-          points = collection.points;
-          for (var y=0; y<points.length; y++) {
-            point = points[y];
-            this.add(element.selector, (point.Y + parseInt(at)), point.value);
+          actions = element.actions;
+          for (var property in actions) {
+            collection = actions[property];
+            points = collection.points;
+            for (var i=0; i<points.length; i++) {
+              point = points[i];
+              this.add((parseInt(at) + point.Y), element.selector, point.value);
+            }
           }
         }
         return this;
       }
     }
 
-    var OnScrollFunction = function (storyboard) {
+    function OnScrollFunction (storyboard) {
       return function () {
-        var wY = windowObject.pageYOffset
+        var wY = win.pageYOffset
           , elements = storyboard.elements
           , element;
         for (var i=0; i<elements.length; i++) {
@@ -275,17 +284,15 @@
       }
     }
 
-    var OnResizeFunction = function (storyboard) {
+    function OnResizeFunction (storyboard) {
       return function () {
-        documentObject.body.style.minHeight = (storyboard.max + windowObject.innerHeight) + 'px';
+        doc.body.style.minHeight = ((storyboard.max + win.innerHeight) + 'px');
       }
     }
 
     var Roll = function () {
       this.scenes = {};
       this.ats = {};
-      this.befores = {};
-      this.afters = {};
     }
 
     Roll.prototype = {
@@ -304,45 +311,24 @@
         this.ats[Y] = ats;
         return this;
       },
-      before: function (before, name) {
-        var befores = this.befores[before] || [];
-        befores.push(name);
-        this.befores[before] = befores;
-        return this;
-      },
-      after: function (after, name) {
-        var afters = this.afters[after] || [];
-        afters.push(name);
-        this.afters[after] = afters;
-        return this;
-      },
       bind: function () {
-        var scenes = this.scenes
-          , storyboard = new Storyboard()
-          , name, sceneA, sceneB, Y, yInt;
-        for (Y in this.ats) {
-          yInt = parseInt(Y);
-          name = this.ats[Y];
-          sceneA = scenes[name];
-          for (var before in this.befores) {
-            if (before == name) {
-              sceneB = scenes[this.befores[before]];
-              storyboard.merge((yInt - sceneB.storyboard.max), sceneB.storyboard);
-            }
+        var storyboard = new Storyboard()
+          , names
+          , scene
+          , OnScrollFn
+          , OnResizeFn;
+        for (var Y in this.ats) {
+          names = this.ats[Y];
+          for (var i=0; i<names.length; i++) {
+            scene = this.scenes[names[i]];
+            storyboard.merge(Y, scene.storyboard);
           }
-          for (var after in this.afters) {
-            if (after == name) {
-              sceneB = scenes[this.afters[after]];
-              storyboard.merge((yInt + sceneA.storyboard.max), sceneB.storyboard);
-            }
-          }
-          storyboard.merge(Y, sceneA.storyboard);
         }
-        var OnScrollFn = OnScrollFunction(storyboard)
-          , OnResizeFn = OnResizeFunction(storyboard);
-        windowObject.addEventListener('scroll', OnScrollFn);
-        windowObject.addEventListener('resize', OnResizeFn);
+        OnScrollFn = OnScrollFunction(storyboard);
+        win.addEventListener('scroll', OnScrollFn);
         OnScrollFn();
+        OnResizeFn = OnResizeFunction(storyboard);
+        win.addEventListener('resize', OnResizeFn);
         OnResizeFn();
       }
     }
@@ -367,7 +353,7 @@
         }
         for (property in properties) {
           action = new Action(Klass, property, properties[property]);
-          this.storyboard.add($el, 0, action);
+          this.storyboard.add(0, $el, action);
         }
         return this;
       }
@@ -380,7 +366,7 @@
   if ('function' === typeof define && define.amd) {
     define(__);
   } else {
-    windowObject.Roll = __();
+    win.Roll = __();
   };
 
 }(window, document));
