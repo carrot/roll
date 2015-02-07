@@ -21,7 +21,7 @@
 * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-(function (windowObject, documentObject) {
+(function (win, doc) {
 
   function __() {
 
@@ -204,7 +204,7 @@
         if ($el.nodeName) {
           $el = [$el]
         } else if ('string' === typeof $el) {
-          $el = documentObject.querySelectorAll($el);
+          $el = doc.querySelectorAll($el);
         }
         for (var property in actions) {
           collection = actions[property];
@@ -274,7 +274,7 @@
 
     function OnScrollFunction (storyboard) {
       return function () {
-        var wY = windowObject.pageYOffset
+        var wY = win.pageYOffset
           , elements = storyboard.elements
           , element;
         for (var i=0; i<elements.length; i++) {
@@ -286,7 +286,7 @@
 
     function OnResizeFunction (storyboard) {
       return function () {
-        documentObject.body.style.minHeight = ((storyboard.max + windowObject.innerHeight) + 'px');
+        doc.body.style.minHeight = ((storyboard.max + win.innerHeight) + 'px');
       }
     }
 
@@ -325,10 +325,10 @@
           }
         }
         OnScrollFn = OnScrollFunction(storyboard);
-        windowObject.addEventListener('scroll', OnScrollFn);
+        win.addEventListener('scroll', OnScrollFn);
         OnScrollFn();
         OnResizeFn = OnResizeFunction(storyboard);
-        windowObject.addEventListener('resize', OnResizeFn);
+        win.addEventListener('resize', OnResizeFn);
         OnResizeFn();
       }
     }
@@ -366,7 +366,7 @@
   if ('function' === typeof define && define.amd) {
     define(__);
   } else {
-    windowObject.Roll = __();
+    win.Roll = __();
   };
 
 }(window, document));
