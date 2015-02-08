@@ -54,11 +54,9 @@ roll
 roll.init();
 ```
 
-## APIs
+## API
 
 Roll returns two classes: `Roll` and `Roll.Scene`.  An instance of `Roll` is a controller class for `Roll.Scene` instances.  All methods in `Roll` and `Roll.Scene` return the instance and thus are chainable.
-
-#### Controller API
 
 ```javascript
 var roll = new Roll();
@@ -88,11 +86,21 @@ Applies the necessary event listeners.
 
 Removes all event listeners.
 
-#### Scene API
-
 ```javascript
 var scene = new Roll.Scene();
 ```
+
+##### `scene.animate($, property, [points])`
+
+Add an animation to the scene.
+
+##### `scene.style($, property, [points])`
+
+Add a style property to the scene.
+
+##### `scene.action(klass, $, property, [points])`
+
+Add any class as an action for the scene.
 
 ## License & Contributing
 
