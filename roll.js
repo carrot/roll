@@ -182,12 +182,29 @@
       }
     }
 
+    function SetElementStyle (object, property, value) {
+      if (object instanceof NodeList || object instanceof Array) {
+        for (var i=0; i<object.length; i++) SetElementStyle(object[i], property, value);
+      } else {
+        object.style[property] = value;
+      }
+    }
+
     var Element = function (selector) {
       this.selector = selector;
       this.actions = {};
     }
 
     Element.prototype = {
+      $: function () {
+        var $ = this.selector;
+        if ($.nodeName) {
+          $ = [$];
+        } else if ('string' === typeof $) {
+          $ = doc.querySelectorAll($);
+        }
+        return $;
+      },
       add: function (Y, action) {
         var property = action.property
           , collection;
@@ -197,15 +214,10 @@
         return this;
       },
       set: function (wY) {
-        var $el = this.selector
+        var $ = this.$()
           , actions = this.actions
           , collection, points
           , point, action, Y;
-        if ($el.nodeName) {
-          $el = [$el]
-        } else if ('string' === typeof $el) {
-          $el = doc.querySelectorAll($el);
-        }
         for (var property in actions) {
           collection = actions[property];
           points = collection.points;
@@ -214,11 +226,17 @@
             action = point.value;
             Y = (wY - point.Y);
             if ( (Y > 0) || (Y < 0 && x == 0) ) {
-              for (var y=0; y<$el.length; y++) {
-                $el[y].style[property] = action.current(Y);
-              }
+              SetElementStyle($, property, action.current(Y));
             }
           }
+        }
+        return this;
+      },
+      unset: function () {
+        var actions = this.actions
+          , $ = this.$();
+        for (var property in actions) {
+          for (var i=0; i<$.length; i++) $[i].style[property] = '';
         }
         return this;
       }
@@ -269,30 +287,73 @@
           }
         }
         return this;
-      }
-    }
-
-    function OnScrollFunction (storyboard) {
-      return function () {
-        var wY = win.pageYOffset
-          , elements = storyboard.elements
+      },
+      set: function (Y) {
+        var elements = this.elements
           , element;
         for (var i=0; i<elements.length; i++) {
           element = elements[i];
-          element.set(wY);
+          element.set(Y);
+        }
+      },
+      unset: function () {
+        var elements = this.elements
+          , element;
+        for (var i=0; i<elements.length; i++) {
+          element = elements[i];
+          element.unset();
         }
       }
     }
 
-    function OnResizeFunction (storyboard) {
+    function SetStoryboardFunction (storyboard) {
       return function () {
-        doc.body.style.minHeight = ((storyboard.max + win.innerHeight) + 'px');
+        var wY = win.pageYOffset;
+        storyboard.set(wY);
       }
+    }
+
+    function SetBodyMinHeightFunction (storyboard) {
+      return function () {
+        SetElementStyle(doc.body, 'minHeight', ((storyboard.max + win.innerHeight) + 'px'));
+      }
+    }
+
+    function AddEvent (roll, string, callback) {
+      var events = string.split(' ')
+        , ev;
+      for (var i=0; i<events.length; i++) {
+        ev = events[i];
+        if (!roll.events[ev]) roll.events[ev] = [];
+        roll.events[ev].push(callback);
+        win.addEventListener(ev, callback);
+      }
+      callback();
+    }
+
+    function RemoveEvents (roll, string) {
+      var events = string.split(' ')
+        , ev, callbacks, callback;
+      for (var x=0; x<events.length; x++) {
+        ev = events[x];
+        callbacks = roll.events[ev];
+        for (var y=0; x<callbacks.length; x++) {
+          callback = callbacks[y];
+          win.removeEventListener(ev, callback);
+        }
+        roll.events[ev] = [];
+      }
+    }
+
+    function RemoveAllEvents (roll) {
+      for (var ev in roll.events) RemoveEvents(roll, ev);
+      roll.events = {};
     }
 
     var Roll = function () {
       this.scenes = {};
       this.ats = {};
+      this.events = {};
     }
 
     Roll.prototype = {
@@ -311,12 +372,9 @@
         this.ats[Y] = ats;
         return this;
       },
-      bind: function () {
-        var storyboard = new Storyboard()
-          , names
-          , scene
-          , OnScrollFn
-          , OnResizeFn;
+      init: function () {
+        var storyboard, names, scene;
+        storyboard = this.storyboard = new Storyboard();
         for (var Y in this.ats) {
           names = this.ats[Y];
           for (var i=0; i<names.length; i++) {
@@ -324,12 +382,29 @@
             storyboard.merge(Y, scene.storyboard);
           }
         }
-        OnScrollFn = OnScrollFunction(storyboard);
-        win.addEventListener('scroll', OnScrollFn);
-        OnScrollFn();
-        OnResizeFn = OnResizeFunction(storyboard);
-        win.addEventListener('resize', OnResizeFn);
-        OnResizeFn();
+        this.bind();
+        return this;
+      },
+      remove: function () {
+        var storyboard;
+        if (storyboard = this.storyboard) {
+          storyboard.unset();
+          this.storyboard = null;
+        }
+        SetElementStyle(doc.body, 'minHeight', '');
+        this.unbind();
+        return this;
+      },
+      bind: function () {
+        if (this.storyboard) {
+          AddEvent(this, 'scroll resize', SetStoryboardFunction(this.storyboard));
+          AddEvent(this, 'resize', SetBodyMinHeightFunction(this.storyboard));
+        }
+        return this;
+      },
+      unbind: function () {
+        RemoveAllEvents(this);
+        return this;
       }
     }
 
