@@ -1,6 +1,6 @@
 {
   "name": "roll",
-  "version": "0.0.2",
+  "version": "0.4",
   "author": "Carrot Creative <dev@carrotcreative.com>",
   "description": "A simple parallax scrolling library written in pure JavaScript.",
   "license": "MIT",
