@@ -272,7 +272,7 @@
       }
     }
 
-    function OnScrollFunction (storyboard) {
+    function SetElementsInStoryboardFunction (storyboard) {
       return function () {
         var wY = win.pageYOffset
           , elements = storyboard.elements
@@ -284,15 +284,47 @@
       }
     }
 
-    function OnResizeFunction (storyboard) {
+    function SetBodyMinHeightFunction (storyboard) {
       return function () {
         doc.body.style.minHeight = ((storyboard.max + win.innerHeight) + 'px');
       }
     }
 
+    function AddEvent (roll, string, callback) {
+      var events = string.split(' ')
+        , ev;
+      for (var i=0; i<events.length; i++) {
+        ev = events[i];
+        if (!roll.events[ev]) roll.events[ev] = [];
+        roll.events[ev].push(callback);
+        win.addEventListener(ev, callback);
+      }
+      callback();
+    }
+
+    function RemoveEvents (roll, string) {
+      var events = string.split(' ')
+        , ev, callbacks, callback;
+      for (var x=0; x<events.length; x++) {
+        ev = events[x];
+        callbacks = roll.events[ev];
+        for (var y=0; x<callbacks.length; x++) {
+          callback = callbacks[y];
+          win.removeEventListener(ev, callback);
+        }
+        roll.events[ev] = [];
+      }
+    }
+
+    function RemoveAllEvents (roll) {
+      for (var ev in roll.events) RemoveEvents(roll, ev);
+      roll.events = {};
+    }
+
     var Roll = function () {
       this.scenes = {};
       this.ats = {};
+      this.events = {};
     }
 
     Roll.prototype = {
@@ -322,23 +354,12 @@
             storyboard.merge(Y, scene.storyboard);
           }
         }
-        this.onScrollFn = OnScrollFunction(storyboard);
-        this.onResizeFn = OnResizeFunction(storyboard);
-        this.onScrollFn();
-        this.onResizeFn();
-        win.addEventListener('resize', this.onResizeFn);
-        win.addEventListener('scroll', this.onScrollFn);
+        AddEvent(this, 'scroll resize', SetElementsInStoryboardFunction(storyboard));
+        AddEvent(this, 'resize', SetBodyMinHeightFunction(storyboard));
         return this;
       },
       unbind: function () {
-        if (this.onScrollFn) {
-          win.removeEventListener('scroll', this.onScrollFn);
-          this.onScrollFn = null;
-        }
-        if (this.onResizeFn) {
-          win.removeEventListener('scroll', this.onResizeFn);
-          this.onResizeFn = null;
-        }
+        RemoveAllEvents(this);
         return this;
       }
     }
