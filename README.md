@@ -51,12 +51,12 @@ roll
   .at(1000, 'scene2');
 
 // When the document is ready:
-roll.bind();
+roll.init();
 ```
 
 ## APIs
 
-Roll returns two classes: `Roll` and `Roll.Scene`.  An instance of `Roll` is a controller class for `Roll.Scene` instances.  All methods in `Roll` and `Roll.Scene` return the instance and thus are chainable (with the exception of `roll.bind()`).
+Roll returns two classes: `Roll` and `Roll.Scene`.  An instance of `Roll` is a controller class for `Roll.Scene` instances.  All methods in `Roll` and `Roll.Scene` return the instance and thus are chainable.
 
 #### Controller API
 
@@ -72,9 +72,21 @@ Adds `scene` to the controller.
 
 Asks the controller to play a scene named `name` beginning at `Y`, an integer representing a point on the window's Y-axis.
 
-##### `roll.bind()`
+##### `roll.init()`
 
 Creates a "storyboard" with the specifications previously applied to the controller and applies the necessary event listeners.
+
+##### `roll.remove()`
+
+Removes all style property values and event listeners.
+
+##### `roll.bind()`
+
+Applies the necessary event listeners.
+
+##### `roll.unbind()`
+
+Removes all event listeners.
 
 #### Scene API
 
