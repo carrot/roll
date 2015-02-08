@@ -314,9 +314,7 @@
       bind: function () {
         var storyboard = new Storyboard()
           , names
-          , scene
-          , OnScrollFn
-          , OnResizeFn;
+          , scene;
         for (var Y in this.ats) {
           names = this.ats[Y];
           for (var i=0; i<names.length; i++) {
@@ -324,12 +322,24 @@
             storyboard.merge(Y, scene.storyboard);
           }
         }
-        OnScrollFn = OnScrollFunction(storyboard);
-        win.addEventListener('scroll', OnScrollFn);
-        OnScrollFn();
-        OnResizeFn = OnResizeFunction(storyboard);
-        win.addEventListener('resize', OnResizeFn);
-        OnResizeFn();
+        this.onScrollFn = OnScrollFunction(storyboard);
+        this.onResizeFn = OnResizeFunction(storyboard);
+        this.onScrollFn();
+        this.onResizeFn();
+        win.addEventListener('resize', this.onResizeFn);
+        win.addEventListener('scroll', this.onScrollFn);
+        return this;
+      },
+      unbind: function () {
+        if (this.onScrollFn) {
+          win.removeEventListener('scroll', this.onScrollFn);
+          this.onScrollFn = null;
+        }
+        if (this.onResizeFn) {
+          win.removeEventListener('scroll', this.onResizeFn);
+          this.onResizeFn = null;
+        }
+        return this;
       }
     }
 
