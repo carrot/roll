@@ -182,11 +182,24 @@
       }
     }
 
+    var VendorPrefixProperties = {}, StyleDeclaration;
+
+    function VendorPrefixProperty (property) {
+      var matches;
+      if (!StyleDeclaration) StyleDeclaration = '|' + Array.prototype.slice.call(win.getComputedStyle(doc.documentElement, '')).join('|') + '|'
+      if (VendorPrefixProperties[property]) {
+        return VendorPrefixProperties[property];
+      } else if (matches = (new RegExp('\\|(-(moz|webkit|ms)-' + property + ')\\|')).exec(StyleDeclaration)) {
+        return VendorPrefixProperties[property] = matches[1];
+      }
+      return property;
+    }
+
     function SetElementStyle (object, property, value) {
       if (object instanceof NodeList || object instanceof Array) {
         for (var i=0; i<object.length; i++) SetElementStyle(object[i], property, value);
       } else {
-        object.style[property] = value;
+        object.style[VendorPrefixProperty(property)] = value;
       }
     }
 
