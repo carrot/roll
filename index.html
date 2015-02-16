@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="text/javascript" src="roll.js"></script>
+    <style type="text/css">
+    #foo {
+      left: 100px;
+      width: 100px;
+      height: 100px;
+      background: red;
+      position: fixed;
+      top: 100px;
+    }
+    </style>
+  </head>
+  <body>
+    <div id="foo"></div>
+    <script type="text/javascript">
+    var roll = new Roll();
+    roll
+      .add('scene1', function (_) {
+        _.animate('#foo', {transform: {0: 'translateY(300px)', 1000: 'translateY(0px)'}});
+      })
+      .add('scene2', function (_) {
+        _
+          .animate('#foo', {transform: {0: 'translateY(0px)', 100: 'translateY(300px)'}})
+      })
+      .add('scene3', function (_) {
+        _
+          .animate('#foo', {transform: {0: 'translateY(0px)', 100: 'translateY(300px)'}})
+      })
+
+      .at(1000, 'scene1')
+      .init()
+      .remove()
+    </script>
+  </body>
+</html>
