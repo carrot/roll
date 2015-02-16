@@ -319,48 +319,38 @@
       }
     }
 
-    function SetStoryboardFunction (storyboard) {
-      return function () {
-        var wY = win.pageYOffset;
-        storyboard.set(wY);
-      }
-    }
-
-    function SetBodyMinHeightFunction (storyboard) {
-      return function () {
-        SetElementStyle(doc.body, 'minHeight', ((storyboard.max + win.innerHeight) + 'px'));
-      }
-    }
-
-    function AddEvent (roll, string, callback) {
-      var events = string.split(' ')
+    function AddEvent (roll, events, callback) {
+      var fn = callback.bind(null, roll)
         , ev;
       for (var i=0; i<events.length; i++) {
         ev = events[i];
         if (!roll.events[ev]) roll.events[ev] = [];
-        roll.events[ev].push(callback);
-        win.addEventListener(ev, callback);
+        roll.events[ev].push(fn);
+        win.addEventListener(ev, fn);
       }
-      callback();
+      fn();
     }
 
-    function RemoveEvents (roll, string) {
-      var events = string.split(' ')
-        , ev, callbacks, callback;
+    function RemoveEvent (roll, events, callback) {
+      var ev, callbacks, cb;
       for (var x=0; x<events.length; x++) {
-        ev = events[x];
-        callbacks = roll.events[ev];
-        for (var y=0; x<callbacks.length; x++) {
-          callback = callbacks[y];
-          win.removeEventListener(ev, callback);
+        ev = events[i];
+        callbacks = 'function' === typeof callback ? [callback] : roll.events[ev];
+        if (roll.events[ev]) {
+          for (var y=0; y<callbacks.length; y++) {
+            cb = callbacks[y];
+            win.removeEventListener(ev, cb);
+          }
         }
-        roll.events[ev] = [];
       }
     }
 
-    function RemoveAllEvents (roll) {
-      for (var ev in roll.events) RemoveEvents(roll, ev);
-      roll.events = {};
+    function OnScroll (roll) {
+      roll.storyboard.set(win.pageYOffset);
+    }
+
+    function OnResize (roll) {
+      SetElementStyle(doc.body, 'minHeight', ((roll.storyboard.max + win.innerHeight) + 'px'));
     }
 
     var Roll = function () {
@@ -410,8 +400,8 @@
       },
       bind: function () {
         if (this.storyboard) {
-          AddEvent(this, 'scroll resize', SetStoryboardFunction(this.storyboard));
-          AddEvent(this, 'resize', SetBodyMinHeightFunction(this.storyboard));
+          AddEvent(this, ['scroll', 'resize'], OnScroll);
+          AddEvent(this, ['resize'], OnResize);
         }
         return this;
       },
