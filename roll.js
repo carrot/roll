@@ -379,19 +379,19 @@
         this.scenes[name] = scene;
         return this;
       },
-      at: function (Y, name) {
+      at: function (Y, scene) {
         var ats = this.ats[Y] || [];
-        ats.push(name);
+        ats.push(scene);
         this.ats[Y] = ats;
         return this;
       },
       init: function () {
-        var storyboard, names, scene;
+        var storyboard, scenes, scene;
         storyboard = this.storyboard = new Storyboard();
         for (var Y in this.ats) {
-          names = this.ats[Y];
-          for (var i=0; i<names.length; i++) {
-            scene = this.scenes[names[i]];
+          scenes = this.ats[Y];
+          for (var i=0; i<scenes.length; i++) {
+            scene = 'string' === typeof scenes[i] ? this.scenes[scenes[i]] : scenes[i]
             storyboard.merge(Y, scene.storyboard);
           }
         }
