@@ -334,7 +334,7 @@
     function RemoveEvent (roll, events, callback) {
       var ev, callbacks, cb;
       for (var x=0; x<events.length; x++) {
-        ev = events[i];
+        ev = events[x];
         callbacks = 'function' === typeof callback ? [callback] : roll.events[ev];
         if (roll.events[ev]) {
           for (var y=0; y<callbacks.length; y++) {
@@ -406,7 +406,7 @@
         return this;
       },
       unbind: function () {
-        RemoveAllEvents(this);
+        RemoveEvent(this, ['scroll', 'resize']);
         return this;
       }
     }
