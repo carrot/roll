@@ -238,7 +238,7 @@
             point = points[x];
             action = point.value;
             Y = (wY - point.Y);
-            if ( (Y > 0) || (Y < 0 && x == 0) ) {
+            if ( (Y > 0) || (Y <= 0 && x == 0) ) {
               SetElementStyle($, property, action.current(Y));
             }
           }
